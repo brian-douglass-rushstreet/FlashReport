@@ -1,0 +1,58 @@
+{
+    "sqltools.connections": [
+        {
+            "authenticator": "SNOWFLAKE",
+            "ocspOptions": {
+                "ocspFailOpen": true
+            },
+            "snowflakeOptions": {
+                "clientSessionKeepAlive": true,
+                "clientSessionKeepAliveHeartbeatFrequency": 3600
+            },
+            "previewLimit": 50,
+            "driver": "Snowflake",
+            "name": "Snowflake",
+            "account": "rushstreetgaming",
+            "username": "xxxxxxxxxxx",
+            "password": "xxxxxxxxxxxx",
+            "database": "DESP",
+            "warehouse": "briandouglass_wh"
+        },
+        {
+            "authenticator": "SNOWFLAKE",
+            "ocspOptions": {
+                "ocspFailOpen": true
+            },
+            "snowflakeOptions": {
+                "clientSessionKeepAlive": true,
+                "clientSessionKeepAliveHeartbeatFrequency": 3600
+            },
+            "previewLimit": 50,
+            "driver": "Snowflake",
+            "name": "Snowflake_PITT",
+            "account": "rushstreetgaming",
+            "username": "xxxxxxxxx",
+            "password": "xxxxxxxxx",
+            "database": "PITT",
+            "warehouse": "briandouglass_wh"
+        },
+        {
+            "authenticator": "SNOWFLAKE",
+            "ocspOptions": {
+                "ocspFailOpen": true
+            },
+            "snowflakeOptions": {
+                "clientSessionKeepAlive": true,
+                "clientSessionKeepAliveHeartbeatFrequency": 3600
+            },
+            "previewLimit": 50,
+            "driver": "Snowflake",
+            "name": "Snowflake_Phil",
+            "account": "rushstreetgaming",
+            "username": "xxxxxxxx",
+            "password": "xxxxxxxxxxxx",
+            "database": "PHIL",
+            "warehouse": "briandouglass_wh"
+        }
+    ]
+}
