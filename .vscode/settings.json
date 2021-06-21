@@ -53,6 +53,24 @@
             "password": "xxxxxxxxxxxx",
             "database": "PHIL",
             "warehouse": "briandouglass_wh"
+        },
+        {
+            "authenticator": "SNOWFLAKE",
+            "ocspOptions": {
+                "ocspFailOpen": true
+            },
+            "snowflakeOptions": {
+                "clientSessionKeepAlive": true,
+                "clientSessionKeepAliveHeartbeatFrequency": 3600
+            },
+            "previewLimit": 50,
+            "driver": "Snowflake",
+            "name": "RSG",
+            "username": "bdouglass",
+            "password": "General752Instructions#",
+            "database": "RSG",
+            "warehouse": "briandouglass_wh",
+            "account": "rushstreetgaming"
         }
     ]
 }
