@@ -1,3 +1,4 @@
+create or replace table FlashReport as
 with patron_rating_slot as (
     SELECT count(DISTINCT(s.PTNID)) cardedslottrips,
           s.yyyyinserted, s.mminserted, s.ddinserted, 
