@@ -1,10 +1,11 @@
-create or replace table FlashReport as
+--create or replace table FlashReport as
 with patron_rating_slot as (
     SELECT count(DISTINCT(s.PTNID)) cardedslottrips,
           s.yyyyinserted, s.mminserted, s.ddinserted, 
            sum(s.TIMEONDEVSEC) AS cardedslotSec,
            sum(s.CASHBUYIN) AS cardedslotci,
-           sum(s.TOTBUYIN)-sum(s.TOTWALKWITH) AS cardedslotgrosswin	
+           sum(s.TOTBUYIN)-sum(s.TOTWALKWITH) AS cardedslotgrosswin
+           , s.Provider_abbr	
     FROM KCMS.VW_TAL_PTNRATING s	  
            INNER JOIN KCMS.VW_TAL_DEVICE d ON d.DEVID=s.devid 
            INNER JOIN KCMS.VW_TAL_GSTZONE z ON z.ZONEID=d.zoneid
@@ -12,7 +13,9 @@ with patron_rating_slot as (
         AND z.ZONENAME NOT IN ('ZONE W','WT')
         AND s.STATUS = 'CLOSED' 
         AND s.PTNID<>0
-    GROUP BY 	  s.yyyyinserted, s.mminserted, s.ddinserted
+    GROUP BY 
+        s.Provider_abbr,
+        s.yyyyinserted, s.mminserted, s.ddinserted
 ),
 
 patron_rating_table as (
@@ -20,15 +23,16 @@ patron_rating_table as (
           t.yyyyinserted, t.mminserted, t.ddinserted, 
            sum(t.TIMEONDEVSEC) AS cardedtablesec,
            sum(t.CASHBUYIN) AS cardedtabledrop,
-           sum(t.TOTBUYIN)-sum(t.TOTWALKWITH) AS cardedtablegrosswin	
+           sum(t.TOTBUYIN)-sum(t.TOTWALKWITH) AS cardedtablegrosswin
+           , t.Provider_abbr	
     FROM KCMS.VW_TAL_PTNRATING t	  
-    INNER JOIN KCMS.VW_TAL_PATRON p ON p.PTNID=t.PTNID
+        INNER JOIN KCMS.VW_TAL_PATRON p ON p.PTNID=t.PTNID
     WHERE t.DEVTYPID IN (3)
-    AND t.gameid NOT LIKE '5023'
-    AND t.STATUS = 'CLOSED' 
-    AND p.LASTNAME NOT LIKE 'Refused%'
-    AND p.LASTNAME NOT LIKE 'Unknown%'
-    GROUP BY 	  t.yyyyinserted, t.mminserted, t.ddinserted
+        AND t.gameid NOT LIKE '5023'
+        AND t.STATUS = 'CLOSED' 
+        AND p.LASTNAME NOT LIKE 'Refused%'
+        AND p.LASTNAME NOT LIKE 'Unknown%'
+    GROUP BY t.Provider_abbr, t.yyyyinserted, t.mminserted, t.ddinserted
 ),
 
 patron_rating_hybrid as (
@@ -36,30 +40,32 @@ patron_rating_hybrid as (
           h.yyyyinserted, h.mminserted, h.ddinserted, 
            sum(h.TIMEONDEVSEC) AS cardedhybridSec,
            sum(h.CASHBUYIN) AS cardedhybridcashdrop,
-           sum(h.TOTBUYIN)-sum(h.TOTWALKWITH) AS cardedhybridwin	
+           sum(h.TOTBUYIN)-sum(h.TOTWALKWITH) AS cardedhybridwin
+           , h.Provider_abbr	
     FROM KCMS.VW_TAL_PTNRATING h	  
            INNER JOIN KCMS.VW_TAL_DEVICE d ON d.DEVID=h.devid 
            INNER JOIN KCMS.VW_TAL_GSTZONE z ON z.zoneid=d.zoneid
     WHERE  h.DEVTYPID IN (1,2)
-    AND z.ZONENAME IN ('ZONE W','WT') 
-    AND h.STATUS = 'CLOSED' 
-    AND h.PTNID<>0
-    GROUP BY 	  h.yyyyinserted, h.mminserted, h.ddinserted
+        AND z.ZONENAME IN ('ZONE W','WT') 
+        AND h.STATUS = 'CLOSED' 
+        AND h.PTNID<>0
+    GROUP BY h.Provider_abbr, h.yyyyinserted, h.mminserted, h.ddinserted
 ),
 
 patron_rating_carded as (
     SELECT  t.yyyyinserted, t.mminserted, t.ddinserted, 
           count(DISTINCT(t.PTNID)) cardedtotaltrips,
            sum(t.TIMEONDEVSEC) AS cardedtotalsec,
-           sum(t.TOTBUYIN)-sum(t.TOTWALKWITH) AS cardedtotalgrosswin	
+           sum(t.TOTBUYIN)-sum(t.TOTWALKWITH) AS cardedtotalgrosswin
+           , t.Provider_abbr
     FROM KCMS.VW_TAL_PTNRATING t 
-    INNER JOIN KCMS.VW_TAL_PATRON p ON p.PTNID=t.PTNID 
+        INNER JOIN KCMS.VW_TAL_PATRON p ON p.PTNID=t.PTNID 
     WHERE t.DEVTYPID IN (1,2,3)
         AND t.STATUS = 'CLOSED'
         AND t.PTNID<>0
         AND p.LASTNAME NOT LIKE 'Refused%'
         AND p.LASTNAME NOT LIKE 'Unknown%'
-    GROUP BY 	  t.yyyyinserted, t.mminserted, t.ddinserted
+    GROUP BY t.Provider_abbr, t.yyyyinserted, t.mminserted, t.ddinserted
 ),
 
 daily_patron_all as (
@@ -74,8 +80,9 @@ daily_patron_all as (
                 WHEN gstid='58' THEN EPRUSED/200 
                 WHEN gstid='197' THEN EPRUSED/300
                 ELSE NULL END) AS eprused
+    , Provider_abbr 
     FROM KCMS.VW_TAL_DAILYPTNALL 
-    GROUP BY YEAR, MONTH, DAY
+    GROUP BY Provider_abbr, YEAR, MONTH, DAY
 ),
 
 daily_patron_sum as (
@@ -83,52 +90,54 @@ daily_patron_sum as (
         to_char(anndate,'mm') AS MONTH,
         to_char(anndate,'dd') AS DAY, 
         count(ptnid) newsignups
+        , Provider_abbr
     FROM KCMS.VW_TAL_DAILYPTNSUM
     WHERE LASTNAME NOT LIKE 'Refused%'
-    AND LASTNAME NOT LIKE 'Unknown%'
-    GROUP BY to_char(anndate,'yyyy'), to_char(anndate, 'mm'), to_char(anndate, 'dd')
+        AND LASTNAME NOT LIKE 'Unknown%'
+    GROUP BY Provider_abbr, to_char(anndate,'yyyy'), to_char(anndate, 'mm'), to_char(anndate, 'dd')
 ),
 
 shift_table_stat as (
     SELECT YEAR, MONTH, "DAY",
-    SUM(POSTEDDROP) + SUM(TBL_AUDIT_ADJ) + SUM(MARKER) + SUM(MARKER_ADJ) AS PROPTABLEDROP,
-    (SUM(CLOSER)+SUM(CLOSER_ADJ)) -- closer 
+        SUM(POSTEDDROP) + SUM(TBL_AUDIT_ADJ) + SUM(MARKER) + SUM(MARKER_ADJ) AS PROPTABLEDROP,
+        (SUM(CLOSER)+SUM(CLOSER_ADJ)) -- closer 
         -(SUM(OPENER)+SUM(OPENER_ADJ)) -- minus opener
         +(SUM(CREDIT)+SUM(CREDIT_ADJ)) -- add credits
         -(SUM(FILL)+SUM(FILL_ADJ)) -- minus fills
         +SUM(POSTEDDROP) + SUM(TBL_AUDIT_ADJ) + SUM(MARKER) + SUM(MARKER_ADJ) --add drop
         -(SUM(TBLJP)+SUM(TBLJP_ADJ)) AS PROPTABLEGROSSWIN, 
         sum(posteddrop_other+posteddrop_other_adj) AS TABLEMPL
-  
+        , Provider_abbr
     FROM KCMS.VW_TAL_SHIFTTBLSTAT
     WHERE GAMEID NOT IN ('5023')
-    GROUP BY YEAR, MONTH, "DAY" 
+    GROUP BY Provider_abbr, YEAR, MONTH, "DAY" 
 ),
 
 property_poker as (
     SELECT YEAR, MONTH, "DAY",
-    (SUM(CLOSER)+SUM(CLOSER_ADJ)) -- closer 
+        (SUM(CLOSER)+SUM(CLOSER_ADJ)) -- closer 
         -(SUM(OPENER)+SUM(OPENER_ADJ)) -- minus opener
         +(SUM(CREDIT)+SUM(CREDIT_ADJ)) -- add credits
         -(SUM(FILL)+SUM(FILL_ADJ)) -- minus fills
         +SUM(POSTEDDROP) + SUM(TBL_AUDIT_ADJ) + SUM(MARKER) + SUM(MARKER_ADJ) --add drop
         -(SUM(TBLJP)+SUM(TBLJP_ADJ)) AS PROPPOKERWIN
-  
+        , Provider_abbr
     FROM KCMS.VW_TAL_SHIFTTBLSTAT
     WHERE GAMEID IN ('5023')
-    GROUP BY YEAR, MONTH, "DAY" 
+    GROUP BY Provider_abbr, YEAR, MONTH, "DAY" 
 ),
 
 property_hybrid as (
     SELECT 	da."YEAR", da."MONTH", da."DAY",
             count(da.assetnum) hybridunits, 
             sum(coininamt)-sum(coinoutamt)-sum(metjp) prophybridwin, sum(estcashdrop) prophybridestcashdrop, sum(estcashdrop) hybridestdrop
+            , da.Provider_abbr
     FROM KCMS.VW_TAL_DAILYDEVSTAT da
            INNER JOIN KCMS.VW_TAL_DEVICE d ON d.DEVID=da.devid 
            INNER JOIN KCMS.VW_TAL_GSTZONE z ON z.ZONEID=d.ZONEID 
     WHERE playcnt >0
         AND z.zonename IN ('ZONE W','WT')
-    GROUP BY da."YEAR", da."MONTH", da."DAY"
+    GROUP BY da.Provider_abbr, da."YEAR", da."MONTH", da."DAY"
 ),
 
 final as (
@@ -171,47 +180,47 @@ final as (
     ----CARDED SLOT
     LEFT OUTER JOIN (
         select * from patron_rating_slot
-    ) splay ON (splay.yyyyinserted=ds.year AND splay.mminserted=ds.month AND splay.ddinserted=ds.day)
+    ) splay ON (splay.Provider_abbr=ds.Provider_abbr and splay.yyyyinserted=ds.year AND splay.mminserted=ds.month AND splay.ddinserted=ds.day)
 
     ----CARDED TABLE
     LEFT OUTER JOIN (
         select * from patron_rating_table
-    ) tplay ON (tplay.yyyyinserted=ds.year AND tplay.mminserted=ds.month AND tplay.ddinserted=ds.day)
+    ) tplay ON (tplay.Provider_abbr=ds.Provider_abbr and tplay.yyyyinserted=ds.year AND tplay.mminserted=ds.month AND tplay.ddinserted=ds.day)
 
     ----CARDED HYBRID
     LEFT OUTER JOIN (
         select * from patron_rating_hybrid
-    ) hplay ON (hplay.yyyyinserted=ds.year AND hplay.mminserted=ds.month AND hplay.ddinserted=ds.day)
+    ) hplay ON (hplay.Provider_abbr=ds.Provider_abbr and hplay.yyyyinserted=ds.year AND hplay.mminserted=ds.month AND hplay.ddinserted=ds.day)
 
     ---CARDED ALL
     LEFT OUTER JOIN (
         select * from patron_rating_carded
-    ) ttlplay ON (ttlplay.yyyyinserted=ds.year AND ttlplay.mminserted=ds.month AND ttlplay.ddinserted=ds.day)
+    ) ttlplay ON (ttlplay.Provider_abbr=ds.Provider_abbr and ttlplay.yyyyinserted=ds.year AND ttlplay.mminserted=ds.month AND ttlplay.ddinserted=ds.day)
 
     ----FSP
     LEFT OUTER JOIN (
         select * from daily_patron_all
-    ) fp ON (fp.year=ds.year AND fp.month=ds.month AND fp.day=ds.day)
+    ) fp ON (fp.Provider_abbr=ds.Provider_abbr and fp.year=ds.year AND fp.month=ds.month AND fp.day=ds.day)
 
     ---NEW SIGNUPS
     LEFT OUTER JOIN (
         select * from daily_patron_sum
-    ) n ON (n.year=ds.year AND n.month=ds.month AND n.day=ds.day)
+    ) n ON (n.Provider_abbr=ds.Provider_abbr and n.year=ds.year AND n.month=ds.month AND n.day=ds.day)
 
     -----PROP TBL GAMES
     LEFT OUTER JOIN (
         select * from shift_table_stat
-    ) prop ON (prop.YEAR=ds.YEAR AND prop.MONTH=ds.MONTH AND prop.DAY=ds.day)
+    ) prop ON (prop.Provider_abbr=ds.Provider_abbr and prop.YEAR=ds.YEAR AND prop.MONTH=ds.MONTH AND prop.DAY=ds.day)
 
     -----PROP POKER
     LEFT OUTER JOIN (
         select * from property_poker
-    ) proppkr ON (proppkr.YEAR=ds.YEAR AND proppkr.MONTH=ds.MONTH AND proppkr.DAY=ds.day)
+    ) proppkr ON (proppkr.Provider_abbr=ds.Provider_abbr and proppkr.YEAR=ds.YEAR AND proppkr.MONTH=ds.MONTH AND proppkr.DAY=ds.day)
 
     ---PROP HHYBRID
     LEFT OUTER JOIN (
         select * from property_hybrid
-    ) hyb ON (hyb.YEAR=ds.YEAR AND hyb.MONTH=ds.MONTH AND hyb.DAY=ds.day)
+    ) hyb ON (hyb.Provider_abbr=ds.Provider_abbr and hyb.YEAR=ds.YEAR AND hyb.MONTH=ds.MONTH AND hyb.DAY=ds.day)
 
     WHERE playcnt >=0
         AND z.zonename NOT IN ('ZONE W','WT')
